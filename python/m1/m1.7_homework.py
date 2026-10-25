@@ -25,11 +25,12 @@ RUN
 
 import warnings
 
+from langchain_core.runnables import RunnableConfig
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
-
 from models import model
 
 agent = create_deep_agent(
@@ -48,8 +49,12 @@ agent = create_deep_agent(
 #     thread_a = {"configurable": {"thread_id": "my-thread-a"}}
 # ════════════════════════════════════════════════════════════════════════
 
-thread_a = None  # TODO 1: replace with your own thread config
-thread_b = None  # TODO 1: replace with your own thread config
+thread_a: RunnableConfig = {
+    "configurable": {"thread_id": "t_id_01"}
+}  # TODO 1: replace with your own thread config
+thread_b: RunnableConfig = {
+    "configurable": {"thread_id": "t_id_02"}
+}  # TODO 1: replace with your own thread config
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -76,9 +81,66 @@ thread_b = None  # TODO 1: replace with your own thread config
 #   )
 # ════════════════════════════════════════════════════════════════════════
 
+
 def run_scenario():
     """TODO 2: run the multi-turn, multi-thread scenario described above."""
-    raise NotImplementedError("TODO 2: see the comment block above")
+
+    # demonstarting thread separation in MemorySaver instance
+    agent = create_deep_agent(
+        model=model,
+        checkpointer=MemorySaver(),
+    )
+
+    result = agent.invoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Remember that I had pizza last night for dinner.",
+                }
+            ]
+        },
+        config=thread_a,
+    )
+    print()
+    print("Thread A, turn 1:")
+    print(result["messages"][-1].text)
+
+    result = agent.invoke(
+        {"messages": [{"role": "user", "content": "What did I eat last night?"}]},
+        config=thread_a,
+    )
+    print("\nThread A, turn 2:")
+    print(result["messages"][-1].text)
+
+    result = agent.invoke(
+        {"messages": [{"role": "user", "content": "What did I eat last night?"}]},
+        config=thread_a,
+    )
+    print("\nThread A, turn 2:")
+    print(result["messages"][-1].text)
+
+    result = agent.invoke(
+        {"messages": [{"role": "user", "content": "What did I eat last night?"}]},
+        config=thread_b,
+    )
+    print("\nThread B, turn 1:")
+    print(result["messages"][-1].text)
+
+    print()
+    print("- - - - - - - - - - - - - - - - - - - - - - - - -")
+    print()
+
+    fresh_agent = create_deep_agent(model=model, checkpointer=MemorySaver())
+
+    result = fresh_agent.invoke(
+        {"messages": [{"role": "user", "content": "What did I eat last night?"}]},
+        config=thread_a,
+    )
+    print("\nThread A, turn 3 - BUT new fresh_agent:")
+    print(result["messages"][-1].text)
+
+    return
 
 
 run_scenario()

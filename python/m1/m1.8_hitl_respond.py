@@ -3,7 +3,6 @@ from deepagents import create_deep_agent
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
-
 from models import model
 
 
@@ -42,7 +41,7 @@ agent = create_deep_agent(
     checkpointer=MemorySaver(),
 )
 
-config = {"configurable": {"thread_id": "m1-8-hitl-respond-demo"}}
+config = {"configurable": {"thread_id": "m1-8-hitl-respond-demox"}}
 
 result = agent.invoke(
     {
@@ -96,7 +95,9 @@ while result.interrupts:
                     {"type": "reject", "message": "User rejected this email draft."}
                 )
 
-    result = agent.invoke(Command(resume={"decisions": decisions}), config=config, version="v2")
+    result = agent.invoke(
+        Command(resume={"decisions": decisions}), config=config, version="v2"
+    )
 
 for msg in result.value["messages"]:
     if hasattr(msg, "name") and msg.name == "send_email":

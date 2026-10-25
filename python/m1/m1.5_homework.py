@@ -24,13 +24,16 @@ RUN
 
 import warnings
 
+import tavily
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from langchain_core.tools import tool
+from textwrap import dedent
 
 from deepagents import create_deep_agent
+from langchain_core.tools import tool
 from models import model
-
+from tavily import TavilyClient
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 1: Define your own custom tool.
@@ -50,10 +53,13 @@ from models import model
 #       ...
 # ════════════════════════════════════════════════════════════════════════
 
+tavily_client = TavilyClient()
+
+
 @tool
-def your_custom_tool(query: str) -> str:
-    """TODO 1: replace this docstring and body with your own tool."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+def web_search(query: str, max_results: int) -> dict:
+    """Use this tool to run web searches"""
+    return tavily_client.search(query, max_results=max_results)
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -65,11 +71,13 @@ def your_custom_tool(query: str) -> str:
 # read_sql.
 # ════════════════════════════════════════════════════════════════════════
 
-SYSTEM_PROMPT = """TODO 2: replace this with your own system prompt."""
+SYSTEM_PROMPT = dedent("""\
+    Your are a personal coach and before answering any user request you use the web_search tool to look for the top motivational quotes of a random year between 1960 and 2026. Then, you pick one and implement it into your answer to the user.\
+    """)  # noqa: E501
 
 # Guards against running with an unfilled placeholder; the filled
 # reference doesn't need this since there's no placeholder text left.
-if "TODO 1" in your_custom_tool.description:
+if "TODO 1" in web_search.description:
     raise NotImplementedError("TODO 1: see the comment block above")
 if "TODO 2" in SYSTEM_PROMPT:
     raise NotImplementedError("TODO 2: see the comment block above")
@@ -77,12 +85,19 @@ if "TODO 2" in SYSTEM_PROMPT:
 agent = create_deep_agent(
     model=model,
     name="Homework_Agent",
-    tools=[your_custom_tool],
+    tools=[web_search],
     system_prompt=SYSTEM_PROMPT,
 )
 
 result = agent.invoke(
-    {"messages": [{"role": "user", "content": "Ask your agent a question that needs your tool."}]}
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "How to become the best version of yourself?",
+            }
+        ]
+    }
 )
 
 print(result["messages"][-1].text)

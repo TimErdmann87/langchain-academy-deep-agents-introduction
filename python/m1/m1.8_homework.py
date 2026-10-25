@@ -27,15 +27,16 @@ RUN
 
 import warnings
 
+from langchain.agents.middleware import InterruptOnConfig, ToolCallRequest
+from langchain_core.runnables import RunnableConfig
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from deepagents import create_deep_agent
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
-
 from models import model
-
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 1: Define your own action tool.
@@ -54,10 +55,11 @@ from models import model
 #       return f"Tweet posted: {content!r}"
 # ════════════════════════════════════════════════════════════════════════
 
+
 @tool
-def your_action_tool(argument: str) -> str:
-    """TODO 1: replace this docstring and body with your own action tool."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+def pay_credit_card(card_name: str, amount: float) -> str:
+    """Use this tool to pay my credit card by a certain amount"""
+    return f"Payed ${amount} to {card_name}"
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -74,26 +76,46 @@ def your_action_tool(argument: str) -> str:
 #     want to call it.
 # ════════════════════════════════════════════════════════════════════════
 
-SYSTEM_PROMPT = "TODO 2: replace this with your own system prompt."
-INITIAL_REQUEST = "TODO 2: replace this with a request that would trigger your tool."
-INTERRUPT_ON = {"your_action_tool": True}  # TODO 2: replace with your own allowed_decisions config
+
+# Optional conditional interrupt
+APPROVAL_THRESHOLD = 20
+
+
+def amount_too_high(request: ToolCallRequest) -> bool:
+    """Credit card payment too high and needs human inervention"""
+    try:
+        amount = float(request.tool_call["args"]["amount"])
+    except (TypeError, ValueError, KeyError):
+        return True  # missing or unparseable amount → interrupt
+    return amount > APPROVAL_THRESHOLD
+
+
+SYSTEM_PROMPT = f"You are an assistant helping with personal finance. You have access to the tool 'pay_credit_card' to assist the user paying a certain credit card. If the amount is higher than ${APPROVAL_THRESHOLD} the user will be asked to check the transaction before execution."
+INITIAL_REQUEST = "I want to pay off my AMEX Gold credit card with $5."
+INTERUPT_ON_CONFIG: InterruptOnConfig = {
+    "allowed_decisions": ["approve", "edit", "reject"],
+    "when": amount_too_high,  # Optional conditional interrupt
+}
+INTERRUPT_ON: dict[str, bool | InterruptOnConfig] = {
+    "pay_credit_card": INTERUPT_ON_CONFIG
+}
 
 # Guards against running with an unfilled placeholder; the filled
 # reference doesn't need this since there's no placeholder text left.
-if "TODO 1" in your_action_tool.description:
+if "TODO 1" in pay_credit_card.description:
     raise NotImplementedError("TODO 1: see the comment block above")
 if "TODO 2" in SYSTEM_PROMPT or "TODO 2" in INITIAL_REQUEST:
     raise NotImplementedError("TODO 2: see the comment block above")
 
 agent = create_deep_agent(
     model=model,
-    tools=[your_action_tool],
+    tools=[pay_credit_card],
     system_prompt=SYSTEM_PROMPT,
     interrupt_on=INTERRUPT_ON,
     checkpointer=MemorySaver(),
 )
 
-config = {"configurable": {"thread_id": "m1-8-homework-demo"}}
+config: RunnableConfig = {"configurable": {"thread_id": "m1-8-homework-demo"}}
 
 result = agent.invoke(
     {"messages": [{"role": "user", "content": INITIAL_REQUEST}]},
@@ -108,13 +130,15 @@ while result.interrupts:
         print(f"\nApproval required for {req['name']}:")
         print(req["args"])
 
-        choice = input("\nApprove, edit, or reject? (approve/edit/reject): ").strip().lower()
+        choice = (
+            input("\nApprove, edit, or reject? (approve/edit/reject): ").strip().lower()
+        )
         if choice in ("approve", "yes", "y"):
             decisions.append({"type": "approve"})
         elif choice in ("edit", "e"):
             edited_args = dict(req["args"])
-            key = next(iter(edited_args))
-            edited_args[key] = input(f"New value for '{key}': ")
+            for key, curr in edited_args.items():
+                edited_args[key] = input(f"New value for '{key}' (current: {curr}): ")
             decisions.append(
                 {
                     "type": "edit",
@@ -126,9 +150,11 @@ while result.interrupts:
                 {"type": "reject", "message": "User rejected this action."}
             )
 
-    result = agent.invoke(Command(resume={"decisions": decisions}), config=config, version="v2")
+    result = agent.invoke(
+        Command(resume={"decisions": decisions}), config=config, version="v2"
+    )
 
 for msg in result.value["messages"]:
-    if hasattr(msg, "name") and msg.name == "your_action_tool":
+    if hasattr(msg, "name") and msg.name == "pay_credit_card":
         print(msg.text)
         break

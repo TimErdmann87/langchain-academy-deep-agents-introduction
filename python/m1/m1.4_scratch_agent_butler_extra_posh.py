@@ -1,6 +1,5 @@
-from langchain_core.tools import tool
-
 from deepagents import create_deep_agent
+from langchain_core.tools import tool
 from models import model
 
 SYSTEM_PROMPT = """YOU ARE THE MOST EXTRAORDINARILY, UNIMPEACHABLY, ARISTOCRATICALLY POSH BRITISH BUTLER

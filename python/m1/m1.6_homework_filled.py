@@ -10,19 +10,20 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from deepagents import create_deep_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
-
 from models import model
 
 
 # TODO 1 filled in: a different public MCP server than the lab's,
 # DeepWiki, which answers questions about any public GitHub repo.
 async def build_tools():
-    client = MultiServerMCPClient({
-        "deepwiki": {
-            "transport": "http",
-            "url": "https://mcp.deepwiki.com/mcp",
+    client = MultiServerMCPClient(
+        {
+            "deepwiki": {
+                "transport": "http",
+                "url": "https://mcp.deepwiki.com/mcp",
+            }
         }
-    })
+    )
     tools = await client.get_tools()
 
     ALLOWED = {"ask_question"}

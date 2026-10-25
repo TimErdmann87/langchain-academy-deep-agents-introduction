@@ -33,9 +33,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from deepagents import create_deep_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
-
 from models import model
-
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 1: Build your MCP client and return its filtered tool list.
@@ -58,10 +56,23 @@ from models import model
 #       return [t for t in tools if t.name in ALLOWED]
 # ════════════════════════════════════════════════════════════════════════
 
+
 async def build_tools():
-    """TODO 1: build a MultiServerMCPClient, fetch its tools, filter them,
-    and return the filtered list."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+    client = MultiServerMCPClient(
+        {"deep-wiki": {"transport": "http", "url": "https://mcp.deepwiki.com/mcp"}}
+    )
+    tools = await client.get_tools()
+    for t in tools:
+        print()
+        print(t.name)
+        print(t.description[:100])
+
+    BLOCKED_TOOLS = {"read_wiki_structure"}
+
+    tools_final = [t for t in tools if t.name not in BLOCKED_TOOLS]
+    print("\nSelected Tools:", f"{', '.join([t.name for t in tools_final])}\n")
+
+    return tools_final
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -69,14 +80,18 @@ async def build_tools():
 # not Lab 1's "what is MCP..." question.
 # ════════════════════════════════════════════════════════════════════════
 
-QUESTION = "TODO 2: replace with a question that puts your chosen tool(s) to work."
+# QUESTION = "What can you help me with?"
+QUESTION = "Using DeepWiki, explain how the langchain-ai/deepagents repo implements subagents. First look at the wiki contents to find the relevant section, then ask a question about how the main agent hands a task to a subagent."
 
 
 async def main():
     tools = await build_tools()
     agent = create_deep_agent(model=model, tools=tools)
     result = await agent.ainvoke({"messages": [{"role": "user", "content": QUESTION}]})
-    print(result["messages"][-1].text)
+    print()
+    print("User:", QUESTION)
+    print("Agent:", result["messages"][-1].text)
+    print()
 
 
 asyncio.run(main())

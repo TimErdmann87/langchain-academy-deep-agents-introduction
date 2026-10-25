@@ -39,8 +39,10 @@ from langchain.chat_models import init_chat_model
 # Requires ANTHROPIC_API_KEY in .env
 model = init_chat_model("anthropic:claude-haiku-4-5", timeout=60, max_retries=2)
 
-#A more capable model for steps that need stronger reasoning
-strong_model = init_chat_model("anthropic:claude-sonnet-5-5", timeout=120, max_retries=2)
+# A more capable model for steps that need stronger reasoning
+strong_model = init_chat_model(
+    "anthropic:claude-sonnet-5-5", timeout=120, max_retries=2
+)
 
 # ═══ Alternative Models (comment out default above, uncomment one below) ═════
 # model = init_chat_model("anthropic:claude-sonnet-5-5")
@@ -76,7 +78,12 @@ strong_model = init_chat_model("anthropic:claude-sonnet-5-5", timeout=120, max_r
 # Requires OPENROUTER_API_KEY in .env
 #
 # from langchain_openai import ChatOpenAI
-# model = ChatOpenAI(model="nvidia/nemotron-3-ultra-550b-a55b:free", base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"])
+
+# model = ChatOpenAI(
+#     model="nvidia/nemotron-3-ultra-550b-a55b:free",
+#     base_url="https://openrouter.ai/api/v1",
+#     api_key=os.environ["OPENROUTER_API_KEY"],
+# )
 
 
 # ═══ Cloud Provider Models (extra install required, see table above) ═════════

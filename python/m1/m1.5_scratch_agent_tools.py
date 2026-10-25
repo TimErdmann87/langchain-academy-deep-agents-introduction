@@ -6,7 +6,6 @@ from pathlib import Path
 from deepagents import create_deep_agent
 from langchain_community.utilities import SQLDatabase
 from langchain_core.tools import tool
-
 from models import model
 
 DB_PATH = Path(__file__).parent / "chinook.db"
@@ -39,7 +38,14 @@ agent = create_deep_agent(
 )
 
 result = agent.invoke(
-    {"messages": [{"role": "user", "content": "Which five genres have the most tracks?"}]}
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "When you just ran the query in another instance of yourself, you didn't analyze the schema of the database. How come you could create the correct query to get the top 5 genres with the most tracks?",
+            }
+        ]
+    }
 )
 
 print(result["messages"][-1].text)

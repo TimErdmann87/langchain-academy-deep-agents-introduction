@@ -1,6 +1,6 @@
 from deepagents import create_deep_agent
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
-
 from models import model
 
 agent = create_deep_agent(
@@ -8,11 +8,15 @@ agent = create_deep_agent(
     checkpointer=MemorySaver(),
 )
 
-thread_a = {"configurable": {"thread_id": "m1-7-thread-a"}}
-thread_b = {"configurable": {"thread_id": "m1-7-thread-b"}}
+thread_a: RunnableConfig = {"configurable": {"thread_id": "m1-7-thread-a"}}
+thread_b: RunnableConfig = {"configurable": {"thread_id": "m1-7-thread-b"}}
 
 result = agent.invoke(
-    {"messages": [{"role": "user", "content": "Remember that my favorite colour is blue."}]},
+    {
+        "messages": [
+            {"role": "user", "content": "Remember that my favorite colour is blue."}
+        ]
+    },
     config=thread_a,
 )
 print("Thread A, turn 1:")

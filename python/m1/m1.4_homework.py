@@ -31,9 +31,10 @@ import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+from textwrap import dedent
+
 from deepagents import create_deep_agent
 from models import model
-
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 1: Write a system prompt that scopes the agent to one domain and
@@ -52,8 +53,18 @@ from models import model
 #   )
 # ════════════════════════════════════════════════════════════════════════
 
-SYSTEM_PROMPT = "TODO 1: replace this with your own domain-scoping system prompt."
+SYSTEM_PROMPT = dedent("""\
+  You are a helpful and polite assistant for personal fitness. You only reply to the user about topics covering personal fitness like nutrition, bio mechanics, workout programming, exercises, recovery, and so on.
+  
+  Important:
+  If any other topic than personal fitness gets raised by the user, you must politely explain in brief that you are not answering about other topics than personal fitness.
+  
+  Final Check:
+  Before sending your response to the user, check your answer again and only send it to the user if your answer is about personal fitness.\
+  """)  # noqa: E501,W293
 
+# print(repr(SYSTEM_PROMPT)) # to check where \n are placed
+print(SYSTEM_PROMPT)
 
 agent = create_deep_agent(
     model=model,
@@ -68,10 +79,28 @@ agent = create_deep_agent(
 # refusal actually held.
 # ════════════════════════════════════════════════════════════════════════
 
+
+def interact_w_agent(msg: str) -> str:
+    res = agent.invoke({"messages": [{"role": "user", "content": msg}]})
+    return res["messages"][-1].text
+
+
 def run_test_prompts():
     """TODO 2: invoke `agent` with one in-domain prompt and one
     out-of-domain prompt, and print each response."""
-    raise NotImplementedError("TODO 2: see the comment block above")
+
+    msg1 = "How many sets and reps should my workout cover per muscle group. Let's say for a back and biceps day."
+    res1 = interact_w_agent(msg1)
+    print("\nUser: ", msg1)
+    print("\nAgent: ", res1)
+    print("\n- - - - -\n")
+
+    msg2 = "What skills do I need to develop to be ready for the job market in 2026 when I want to get into AI and Agentic AI for drug discovery?"
+    res2 = interact_w_agent(msg2)
+    print("\nUser: ", msg2)
+    print("\nAgent: ", res2)
+
+    return
 
 
 run_test_prompts()

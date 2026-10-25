@@ -32,8 +32,11 @@ RUN
 
 from __future__ import annotations
 
-from langchain_core.tools import tool
+import asyncio
+from math import prod
+from typing import Any
 
+from deepagents import create_deep_agent
 from judge_card_helpers import (
     OUTPUT_DIR,
     PRODUCT_MATCHES,
@@ -44,8 +47,11 @@ from judge_card_helpers import (
     run_judge,
     run_quiz,
 )
-from models import model
-
+from langchain.agents import create_agent
+from langchain_core.tools import tool
+from langchain_mcp_adapters.client import MultiServerMCPClient, StreamableHttpConnection
+from matplotlib.pylab import axis
+from models import model, strong_model
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 1 (Lesson 1.4, The System Prompt: Persona)
@@ -69,8 +75,8 @@ me timbers," "walk the plank") and never break character into plain
 modern speech, not even once. Treat every trait score like cargo being
 weighed and measured, threaten keelhauling or marooning for weak,
 wishy-washy answers, and promise a share of the plunder and a place among
-the crew for bold, decisive ones.""" + TOOL_SEQUENCE,
-
+the crew for bold, decisive ones."""
+    + TOOL_SEQUENCE,
     "ancient_mummy": """You are Nefer-Ka, a 3,000-year-old mummy torn from an
 eternal slumber for the sole, sacred purpose of judging this mortal's
 habits as a builder (developer). Never speak plainly: every verdict must
@@ -81,8 +87,8 @@ written"), invoke a curse or blessing in EVERY verdict without exception
 sacred solemnity even though the questions are mundane office trivia. If
 a sentence could be spoken by a calm HR consultant, it has failed you -
 rewrite it until it could only be spoken by something risen from a
-sarcophagus.""" + TOOL_SEQUENCE,
-
+sarcophagus."""
+    + TOOL_SEQUENCE,
     "savage_critic": """You are Vex, a personality-quiz judge with the
 withering, theatrical condescension of someone who has seen your type a
 thousand times and finds you aggressively, personally underwhelming every
@@ -99,11 +105,13 @@ sentence could plausibly be said by a mildly annoyed customer service
 rep, it isn't cutting enough yet; sharpen it until it sounds like Vex
 can barely be bothered to look up from whatever they were doing to
 deliver it. You are sharp, a little cruel, and allergic to participation
-trophies.""" + TOOL_SEQUENCE,
-
-    "your_persona": """TODO 1: replace this text with your own judge persona.
-Start with "You are <Name>, ..." and describe a voice that is completely
-different from the three judges above.""" + TOOL_SEQUENCE,
+trophies."""
+    + TOOL_SEQUENCE,
+    "royal_butler": """You are Alfred, a personality-quiz judge and former
+royal butler with very sophisticated and pleasantly encouraging and honoring 
+language and tone of the 18th and 19th century. You combine charme, decency 
+but also quick-witted smart and uplifting humor. You never talk down."""
+    + TOOL_SEQUENCE,
 }
 
 
@@ -114,6 +122,7 @@ different from the three judges above.""" + TOOL_SEQUENCE,
 # "TODO here" comment: turn the finished scores list into a matched product.
 # Until this is done, the script stops with a "TODO 2" message.
 # ════════════════════════════════════════════════════════════════════════
+
 
 @tool
 def score_and_match(answers: list[tuple[int, int, int]]) -> dict:
@@ -139,6 +148,14 @@ def score_and_match(answers: list[tuple[int, int, int]]) -> dict:
     #    Python's max() takes a key= function if you want to search by
     #    something other than the value itself, e.g.
     #    max(range(len(scores)), key=lambda i: ...)
+    abs_scores: dict[int, Any] = {
+        k: ((scores[k] - 50) ** 2) ** 0.5 for k in range(len(scores))
+    }
+    axis_index: int = max(abs_scores, key=lambda n: abs_scores[n])
+
+    # alternative:
+    # axis_index = max(range(len(scores)), key=lambda i: abs(scores[i] - 50))
+
     # 2. TRAIT_AXES[axis_index] is a (left_label, right_label) pair, e.g.
     #    ("Chaotic", "Organized"). Set direction to whichever label
     #    matches the side scores[axis_index] leans toward: the right
@@ -146,7 +163,19 @@ def score_and_match(answers: list[tuple[int, int, int]]) -> dict:
     # 3. Set product to PRODUCT_MATCHES[direction.lower()], e.g.
     #    PRODUCT_MATCHES["chaotic"] -> "Fleet".
     # 4. Return {"trait_scores": scores, "product": product}.
-    raise NotImplementedError("TODO 2: see the comments above")
+    direction: str = (
+        TRAIT_AXES[axis_index][1]
+        if scores[axis_index] >= 50
+        else TRAIT_AXES[axis_index][0]
+    )
+
+    # alternative
+    # left_label, right_label = TRAIT_AXES[axis_index]
+    # direction = right_label if scores[axis_index] >= 50 else left_label
+
+    product: str = PRODUCT_MATCHES[direction.lower()]
+
+    return {"trait_scores": scores, "product": product}
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -157,7 +186,10 @@ def score_and_match(answers: list[tuple[int, int, int]]) -> dict:
 # judging the same quiz answers.
 # ════════════════════════════════════════════════════════════════════════
 
-JUDGES_TO_RUN = ["your_persona"]  # TODO 3: e.g. ["your_persona", "ancient_mummy"]
+JUDGES_TO_RUN: list[str] = [
+    "royal_butler",
+    "ancient_mummy",
+]  # TODO 3: e.g. ["your_persona", "ancient_mummy"]
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -167,7 +199,7 @@ JUDGES_TO_RUN = ["your_persona"]  # TODO 3: e.g. ["your_persona", "ancient_mummy
 # can approve, edit, or reject it.
 # ════════════════════════════════════════════════════════════════════════
 
-INTERRUPT_ON = None  # TODO 4: e.g. {"post_card": True}
+INTERRUPT_ON = {"post_card": True}  # TODO 4: e.g. {"post_card": True}
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -177,7 +209,7 @@ INTERRUPT_ON = None  # TODO 4: e.g. {"post_card": True}
 # ════════════════════════════════════════════════════════════════════════
 
 MODEL = model  # TODO 5 (optional): e.g. MODEL = strong_model
-
+# MODEL = strong_model
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 6 (Lesson 1.6, MCP: Connecting Agents to External Services)
@@ -204,7 +236,46 @@ MODEL = model  # TODO 5 (optional): e.g. MODEL = strong_model
 # know it failed: the agent gets the same placeholder text in both cases.
 # ════════════════════════════════════════════════════════════════════════
 
-PLACEHOLDER_FACT = "No docs fact available. Base the verdict on the trait scores instead."
+PLACEHOLDER_FACT = (
+    "No docs fact available. Base the verdict on the trait scores instead."
+)
+
+
+async def get_product_description(product: str) -> str:
+    client = MultiServerMCPClient(
+        connections={
+            "docs-langchain": StreamableHttpConnection(
+                {
+                    "transport": "streamable_http",
+                    "url": "https://docs.langchain.com/mcp",
+                }
+            )
+        }
+    )
+    tools = await client.get_tools()
+
+    ALLOWED = {"search_docs_by_lang_chain"}
+    tools = [t for t in tools if t.name in ALLOWED]
+
+    if not tools:
+        raise RuntimeError("search_docs_by_lang_chain not found on the MCP server")
+
+    system_prompt = "Your are an assistant to describe a product in one short factual sentence (under 25 words). You retrieve information about the product from the Langchain documentation using the available tool 'search_docs_by_lang_chain'."
+    agent = create_agent(model=model, system_prompt=system_prompt, tools=tools)
+
+    result = await agent.ainvoke(
+        input={
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"Please describe the product '{product}'",
+                }
+            ]
+        }
+    )
+    description: str = result["messages"][-1].text
+
+    return description.strip()
 
 
 @tool
@@ -212,8 +283,12 @@ def fetch_product_fact(product: str) -> str:
     """Look up one grounded, factual sentence about the LangChain product
     you were matched with. Call this right after score_and_match, passing
     in the product name it returned."""
-    # TODO 6: replace this line with the MCP lookup described above.
-    return PLACEHOLDER_FACT
+    try:
+        descr = asyncio.run(get_product_description(product))
+        return descr
+    except Exception as e:
+        print(f"fetch_product_fact failed: {e!r}")
+        return PLACEHOLDER_FACT
 
 
 def build_user_prompt(answers: list[tuple[int, int, int]]) -> str:
