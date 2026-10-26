@@ -35,7 +35,6 @@ from pathlib import Path
 from deepagents import create_deep_agent
 from langchain.tools import tool
 from langchain_quickjs import CodeInterpreterMiddleware
-
 from models import model
 
 DB_PATH = Path(__file__).resolve().parent / "chinook.db"
@@ -77,8 +76,11 @@ def query_chinook(sql: str) -> str:
 # single-query question is a perfectly fine answer too.
 # ════════════════════════════════════════════════════════════════════════
 
-TASK = None  # TODO 1: replace with your own question
-
+TASK = (
+    "Who are our top 5 customers by total invoiced amount? What's the name of the "
+    "highest priced item they individually purchased? What's the total of those "
+    "items across the top 5 customers? Each answer depends on the previous one."  # TODO 1: replace with your own question
+)
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 2: Write a simple eval check for the agent's answer.
@@ -90,12 +92,77 @@ TASK = None  # TODO 1: replace with your own question
 # pass/fail, a reasoned printout is fine.
 # ════════════════════════════════════════════════════════════════════════
 
+
 def eval_answer(answer_text: str) -> None:
-    raise NotImplementedError("TODO 2: see the comment block above")
+    # raise NotImplementedError("TODO 2: see the comment block above")
+    """Independently compute the expected task results and check agent answer"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        # Step 1
+        cursor = conn.execute("""
+        SELECT c.CustomerId, c.FirstName, c.LastName, SUM(il.UnitPrice * il.Quantity) as TotalInvoiced
+        FROM Customer c
+        JOIN Invoice i ON c.CustomerId = i.CustomerId
+        JOIN InvoiceLine il ON i.InvoiceId = il.InvoiceId
+        GROUP BY c.CustomerId, c.FirstName, c.LastName
+        ORDER BY TotalInvoiced DESC
+        LIMIT 5
+        """)
+        top_customers = [dict(row) for row in cursor.fetchall()]
+        top_customer_ids = [c["CustomerId"] for c in top_customers]
+
+        # Step 2
+        cursor = conn.execute("""
+        SELECT il.InvoiceId, i.CustomerId, t.Name as TrackName, il.UnitPrice, il.Quantity, (il.UnitPrice * il.Quantity) as LineTotal
+        FROM InvoiceLine il
+        JOIN Invoice i ON il.InvoiceId = i.InvoiceId
+        JOIN Track t ON il.TrackId = t.TrackId
+        WHERE i.CustomerId IN (6,26,57,45,46)
+        ORDER BY i.CustomerId, il.UnitPrice DESC
+        """)
+        top_customer_orders = [dict(row) for row in cursor.fetchall()]
+
+        highest_order_by_customer = {}
+        for d in top_customer_orders:
+            cid, total = d["CustomerId"], d["LineTotal"]
+            highest_order_by_customer[cid] = max(
+                total, highest_order_by_customer.get(cid, total)
+            )
+
+        top_customers_top_orders_total = sum(highest_order_by_customer.values())
+    finally:
+        conn.close()
+
+    print("\n===== CHECKING AGENT ANSWERS =====")
+    expected_top_customers = [
+        f'{d["FirstName"]} {d["LastName"]}' for d in top_customers
+    ]
+    print(f"Expected top customers: {', '.join(expected_top_customers)}")
+    print(f"Expected total of top customers orders: ${top_customers_top_orders_total}")
+
+    if all(name.lower() in answer_text.lower() for name in expected_top_customers):
+        print("CORRECT - Top Customers")
+    else:
+        print("INCORRECT - Top Customers")
+
+    if str(top_customers_top_orders_total) in answer_text:
+        print("CORRECT - Total of top customers orders")
+    else:
+        print("INCORRECT - Total of top customers orders")
 
 
 if TASK is None:
     raise NotImplementedError("TODO 1: see the comment block above")
+
+# without this addition agent doesn't use eval but direct tool calls
+# but fails sometimes with "sqlite3.ProgrammingError: Incorrect number
+# of bindings supplied. The current statement uses 5, and there are 0 supplied. "
+SYSTEM += (
+    " For dependent queries where each answer requires a result from the"
+    " previous, prefer a single eval() call that chains all queries in"
+    " JavaScript — intermediate values stay in variables and never return to the model."
+)
 
 agent = create_deep_agent(
     model=model,

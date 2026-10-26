@@ -11,7 +11,6 @@ from pathlib import Path
 from deepagents import create_deep_agent
 from langchain.tools import tool
 from langchain_quickjs import CodeInterpreterMiddleware
-
 from models import model
 
 DB_PATH = Path(__file__).resolve().parent / "chinook.db"
@@ -27,6 +26,14 @@ SYSTEM = (
     "Revenue is InvoiceLine.UnitPrice * InvoiceLine.Quantity. "
     "The eval tool supports Programmatic Tool Calling (PTC): JavaScript "
     "running inside eval() can call query_chinook via tools.queryChinook()."
+)
+
+# without this addition agent doesn't use eval but direct tool calls
+# but fails "sqlite3.OperationalError: no such column: t.ArtistId"
+SYSTEM += (
+    " For dependent queries where each answer requires a result from the"
+    " previous, prefer a single eval() call that chains all queries in"
+    " JavaScript — intermediate values stay in variables and never return to the model."
 )
 
 
@@ -58,8 +65,7 @@ def eval_answer(answer_text: str) -> None:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     try:
-        top_country = conn.execute(
-            """
+        top_country = conn.execute("""
             SELECT Customer.Country, SUM(InvoiceLine.UnitPrice * InvoiceLine.Quantity) AS rev
             FROM InvoiceLine
             JOIN Invoice USING(InvoiceId)
@@ -67,8 +73,7 @@ def eval_answer(answer_text: str) -> None:
             GROUP BY Customer.Country
             ORDER BY rev DESC
             LIMIT 1
-            """
-        ).fetchone()
+            """).fetchone()
         top_track = conn.execute(
             """
             SELECT Track.Name, SUM(InvoiceLine.UnitPrice * InvoiceLine.Quantity) AS rev
@@ -91,7 +96,8 @@ def eval_answer(answer_text: str) -> None:
     print(f"Expected top track: {top_track['Name']}")
 
     checks = {
-        "mentions expected country": top_country["Country"].lower() in answer_text.lower(),
+        "mentions expected country": top_country["Country"].lower()
+        in answer_text.lower(),
         "mentions expected track": top_track["Name"].lower() in answer_text.lower(),
     }
     for label, passed in checks.items():

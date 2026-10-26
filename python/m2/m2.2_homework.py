@@ -29,9 +29,7 @@ from pathlib import Path
 
 from deepagents import FilesystemPermission, create_deep_agent
 from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
-
 from models import model
-
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 1: Configure a backend for a topic of your choosing.
@@ -51,9 +49,27 @@ from models import model
 #   (my_dir / "notes.md").write_text("...")
 #   backend = FilesystemBackend(root_dir=str(my_dir), virtual_mode=True)
 # ════════════════════════════════════════════════════════════════════════
+secrets_folder: str = "secrets_test"
+secrets_dir: Path = Path(__file__).parent / secrets_folder
+secrets_dir.mkdir(exist_ok=True)
+(secrets_dir / "apikeys.md").write_text("""\
+# APIKEYS
 
-backend = None  # TODO 1: replace with a StateBackend, FilesystemBackend, or CompositeBackend
+API keys for various applications:
+- GitHub: gh123
+- X: x123
+- DigitalOcean: do123
+""")
 
+backend = CompositeBackend(
+    default=StateBackend(),
+    routes={
+        f"/{secrets_folder}/": FilesystemBackend(
+            root_dir=str(secrets_dir),
+            virtual_mode=True,
+        )
+    },
+)
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 2: Write the task, and optionally a permission rule.
@@ -64,8 +80,16 @@ backend = None  # TODO 1: replace with a StateBackend, FilesystemBackend, or Com
 # empty and skipping permissions entirely is also a valid choice.
 # ════════════════════════════════════════════════════════════════════════
 
-TASK = None  # TODO 2: replace with your own task message
-permissions: list[FilesystemPermission] = []  # TODO 2 (optional): add rules here
+permissions = []
+
+TASK = "Please get my api key for amazon from the secrets folder. In case it's not in there, add a note into the file that I need to add it."
+permissions: list[FilesystemPermission] = [
+    FilesystemPermission(
+        operations=["write"],
+        paths=[f"/{secrets_folder}/**"],
+        mode="deny",
+    ),
+]  # TODO 2 (optional): add rules here
 
 if backend is None:
     raise NotImplementedError("TODO 1: see the comment block above")

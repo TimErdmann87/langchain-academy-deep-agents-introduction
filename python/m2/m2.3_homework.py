@@ -35,7 +35,6 @@ from uuid import uuid4
 from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
-
 from models import model
 
 # ════════════════════════════════════════════════════════════════════════
@@ -61,7 +60,13 @@ from models import model
 #   )
 # ════════════════════════════════════════════════════════════════════════
 
-SYSTEM_PROMPT = None  # TODO 1: replace with your own system prompt
+SYSTEM_PROMPT = (
+    "You are a data scientist. When asked to run code, you write "
+    "the script to a Python file first and then execute the file. To create "
+    "data plots you use matplotlib. Required packages such as matplotlib "
+    "need to be installed via `pip install --break-system-packages matplotlib`. "
+    "Save charts as a .png file."
+)
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -88,9 +93,20 @@ SYSTEM_PROMPT = None  # TODO 1: replace with your own system prompt
 #   )
 # ════════════════════════════════════════════════════════════════════════
 
-TASK_ONE = None  # TODO 2: replace with your first task message
-TASK_TWO = None  # TODO 2: replace with a second task that charts TASK_ONE's file
-
+TASK_ONE = (
+    "Calculate the element-wise sums of the first 10 prime numbers and first "
+    "10 power of 2 numbers (e.g. first element: first prime number is 2, "
+    "first power of 2 is 2^0=1, element-wise sum is 2+1=3). Save the numeric data "
+    "to a file whereas each of the 10 entries has the prime number, power of 2 "
+    "and the sum in csv format, /tmp/data.csv."  # TODO 2: replace with your first task message
+)
+TASK_TWO = (
+    "Load the data from /tmp/data.csv and create a line plot. Draw two "
+    "lines - one for the sum and one for power of 2. Color the area between the lines "
+    "and between the power-of-2 line and the x-axis in 2 colors of a vibrant color "
+    "palette. Create a legend and a title. Ensure everything is well readable and "
+    "visually well designed. Save the plot to /homework_chart.png."  # TODO 2: replace with a second task that charts TASK_ONE's file
+)
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 3: Point CHART_PATH at wherever TASK_TWO saves the chart.
@@ -100,7 +116,9 @@ TASK_TWO = None  # TODO 2: replace with a second task that charts TASK_ONE's fil
 # save it locally, the same way Lab 2 reads /genre_revenue.png back.
 # ════════════════════════════════════════════════════════════════════════
 
-CHART_PATH = None  # TODO 3: replace with the sandbox path used in TASK_TWO
+CHART_PATH = (
+    "/homework_chart.png"  # TODO 3: replace with the sandbox path used in TASK_TWO
+)
 
 if SYSTEM_PROMPT is None:
     raise NotImplementedError("TODO 1: see the comment block above")

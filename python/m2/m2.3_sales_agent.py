@@ -4,7 +4,6 @@ from uuid import uuid4
 from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
-
 from models import model
 
 DB_PATH = Path(__file__).resolve().parent / "chinook.db"
@@ -20,7 +19,9 @@ with open(DB_PATH, "rb") as f:
 
 for upload_result in upload_results:
     if upload_result.error:
-        raise RuntimeError(f"Failed to upload {upload_result.path}: {upload_result.error}")
+        raise RuntimeError(
+            f"Failed to upload {upload_result.path}: {upload_result.error}"
+        )
 
 agent = create_deep_agent(
     model=model,
@@ -48,7 +49,8 @@ try:
                         "of total sales revenue. Group any genres that individually "
                         "account for less than 3% of total revenue into a single 'Other' "
                         "slice. Label each slice with the genre name and percentage. "
-                        "Use a visually distinct color palette, leave a white center hole, "
+                        "Pick a color for the labels that gives a strong contrast to the "
+                        "background. Use a visually distinct color palette, leave a white center hole, "
                         "and make sure no labels overlap with each other or with the title. "
                         "Add enough top padding so the title is fully visible. "
                         "Save the chart to /genre_revenue.png."
