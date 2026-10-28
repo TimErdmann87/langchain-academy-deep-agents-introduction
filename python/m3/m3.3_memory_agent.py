@@ -2,7 +2,6 @@ from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 from deepagents.backends.utils import create_file_data
 from langgraph.store.memory import InMemoryStore
-
 from models import model
 
 store = InMemoryStore()
@@ -58,7 +57,10 @@ agent = create_deep_agent(
 result = agent.invoke(
     {
         "messages": [
-            {"role": "user", "content": "What tool should I use for file paths in this project?"}
+            {
+                "role": "user",
+                "content": "What tool should I use for file paths in this project?",
+            }
         ]
     },
     context=demo_context,
@@ -84,4 +86,3 @@ print(result2["messages"][-1].text)
 print("\n--- AGENTS.md after write ---")
 stored_memory = store.get(namespace_from_context(demo_context), store_memory_path)
 print(stored_memory.value["content"])
-

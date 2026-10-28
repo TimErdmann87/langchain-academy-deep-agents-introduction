@@ -26,11 +26,12 @@ RUN
   uv run ./m3/m3.3_homework.py
 """
 
+from textwrap import dedent
+
 from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 from deepagents.backends.utils import create_file_data
 from langgraph.store.memory import InMemoryStore
-
 from models import model
 
 store = InMemoryStore()
@@ -72,18 +73,34 @@ def memory_namespace(runtime):
 #       """
 # ════════════════════════════════════════════════════════════════════════
 
+
 def build_seed_memory_a() -> str:
     """TODO 1: return CONTEXT_A's starting memory content."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+    return dedent("""\
+        # Study Notes
+        - Finished 'LangChain Academy: Introduction to LangChain- Python'
+        - Currently at 'LangChain Academy: Introduction to Deep Agents' - Module 3
+        """)
 
 
 def build_seed_memory_b() -> str:
     """TODO 1: return CONTEXT_B's starting memory content."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+    return dedent("""\
+        # Study Notes (teammate's)
+        - Currently at certificate 'DeepLearning.AI - Prompt Engineering' - Module 1
+        """)
 
 
-store.put(namespace_from_context(CONTEXT_A), store_memory_path, create_file_data(build_seed_memory_a()))
-store.put(namespace_from_context(CONTEXT_B), store_memory_path, create_file_data(build_seed_memory_b()))
+store.put(
+    namespace_from_context(CONTEXT_A),
+    key=store_memory_path,
+    value=create_file_data(build_seed_memory_a()),
+)
+store.put(
+    namespace_from_context(CONTEXT_B),
+    key=store_memory_path,
+    value=create_file_data(build_seed_memory_b()),
+)
 
 agent = create_deep_agent(
     model=model,
@@ -111,27 +128,37 @@ agent = create_deep_agent(
 #   reflect B's own seed, not A's.
 # ════════════════════════════════════════════════════════════════════════
 
-RECALL_QUESTION = "TODO 2: replace with a question answerable from build_seed_memory_a() alone."
-REMEMBER_MESSAGE = "TODO 2: replace with a 'remember this' message introducing a new, distinctive fact under context A."
-LEAK_CHECK_QUESTION = "TODO 2: replace with the SAME question as RECALL_QUESTION."
+RECALL_QUESTION = "What module am I currently at in the Deep Agent course?"
+REMEMBER_MESSAGE = "Please remember that I finished module 3 of the Deep Agent course and am now at module 4."
+LEAK_CHECK_QUESTION = RECALL_QUESTION
 
 # 1. Context A recalls from its own seed.
-result_a1 = agent.invoke({"messages": [{"role": "user", "content": RECALL_QUESTION}]}, context=CONTEXT_A)
+result_a1 = agent.invoke(
+    {"messages": [{"role": "user", "content": RECALL_QUESTION}]}, context=CONTEXT_A
+)
 print("--- Context A, Question 1 ---")
 print(result_a1["messages"][-1].text)
 
 # 2. Context A learns a new, distinctive fact.
-result_a2 = agent.invoke({"messages": [{"role": "user", "content": REMEMBER_MESSAGE}]}, context=CONTEXT_A)
+result_a2 = agent.invoke(
+    {"messages": [{"role": "user", "content": REMEMBER_MESSAGE}]}, context=CONTEXT_A
+)
 print("\n--- Context A, Question 2 (remember) ---")
 print(result_a2["messages"][-1].text)
 
 # 3. Context B asks the same question. It should NOT see anything from A.
-result_b = agent.invoke({"messages": [{"role": "user", "content": LEAK_CHECK_QUESTION}]}, context=CONTEXT_B)
+result_b = agent.invoke(
+    {"messages": [{"role": "user", "content": LEAK_CHECK_QUESTION}]}, context=CONTEXT_B
+)
 print("\n--- Context B, leak-check question ---")
 print(result_b["messages"][-1].text)
 
-memory_a = store.get(namespace_from_context(CONTEXT_A), store_memory_path).value["content"]
-memory_b = store.get(namespace_from_context(CONTEXT_B), store_memory_path).value["content"]
+memory_a = store.get(namespace_from_context(CONTEXT_A), store_memory_path).value[
+    "content"
+]
+memory_b = store.get(namespace_from_context(CONTEXT_B), store_memory_path).value[
+    "content"
+]
 print("\n--- Context A's stored AGENTS.md ---")
 print(memory_a)
 print("\n--- Context B's stored AGENTS.md ---")

@@ -30,15 +30,15 @@ RUN
 
 import tempfile
 from pathlib import Path
+from textwrap import dedent
 
 from deepagents import create_deep_agent
 from deepagents.backends.filesystem import FilesystemBackend
-
 from models import model
 
 # This name becomes the skill's directory name. It must exactly match the
 # `name:` field you write in the frontmatter inside build_skill_md() below.
-SKILL_NAME = "your-skill-name"
+SKILL_NAME = "submit-polymer-sample"
 REFERENCE_PATH = f"/skills/{SKILL_NAME}/reference.md"
 
 
@@ -68,9 +68,43 @@ REFERENCE_PATH = f"/skills/{SKILL_NAME}/reference.md"
 #   """
 # ════════════════════════════════════════════════════════════════════════
 
+
 def build_skill_md() -> str:
     """TODO 1: return your own SKILL.md content as a string."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+    skill_md_content = dedent(text="""\
+      ---
+      name: submit-polymer-sample
+      description: Use when the user wants to submit a polymer sample for material characterization
+      ---
+
+      # Submit a polymer sample
+      Use this skill when a chemist asks how to prepare, label, or submit a polymer
+      sample for GPC, NMR, or DSC analysis, or asks when results will be ready.
+
+      ## Important
+      The Core's sample requirements, queue rules, drop-off windows, turnaround
+      times, ID format, and submission form are facility-specific and change over
+      time. They are NOT in this file. Before answering, you MUST read
+      `reference.md` in this skill's directory and take every requirement, number,
+      and deadline from it. Never answer from general chemistry knowledge or
+      guess a value; if reference.md does not cover something, say so.
+
+      ## Workflow
+      **Step 1: Identify Analysis**: Clarify the analysis type(s) requested (GPC, NMR, DSC) and solubility of the polymer sample.
+      **Step 2: Read 'reference.md'**: Use tool read_file to load reference information from 'reference.md' in this skill's directory.
+      **Step 3: Check Requirements**: Look up the sample-prep requirements for that analysis and apply any conditional rules (e.g. molecular-weight or solubility-dependent ones) to this specific sample.
+      **Step 4: Create SampleID***: Build the sample ID using the format in reference.md.
+      **Step 5: Inform about Results Date***: Work out the expected results date from the drop-off rules and turnaround times, counting from when the user plans to drop off.
+      **Step 6: Fill out Submission Form**: Fill in the submission form template from reference.md.
+
+      ## Answer format
+      - Short prep checklist tailored to the sample
+      - Sample ID
+      - Expected results date, with one line on how you got it
+      - The completed submission form
+      """)
+
+    return skill_md_content
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -82,9 +116,64 @@ def build_skill_md() -> str:
 # from one produced with it.
 # ════════════════════════════════════════════════════════════════════════
 
+
 def build_reference_md() -> str:
     """TODO 2: return the content of your skill's reference.md."""
-    raise NotImplementedError("TODO 2: see the comment block above")
+    skill_ref_md_content = dedent(text="""\
+      # Building 3 Characterization Core: Submission Reference
+      Revision 2026-10. These rules override general lab practice.
+
+      ## Drop-off
+      - Drop-off window: Monday to Thursday, before 2:00 pm, Room 3-114.
+      - Samples dropped off after 2:00 pm count as received the next business day.
+      - Friday drop-offs are accepted but logged as received the following Monday.
+      - Turnaround is counted in business days from the "received" day.
+
+      ## Sample ID format
+      `YYYYMMDD-INITIALS-NNN`, where the date is the drop-off date and NNN is the
+      submitter's 3-digit sequence number for that day (starting at 001).
+      Example: `20261030-TB-001`.
+
+      ## GPC
+      - Default eluent: THF, 2.0 mg/mL, filtered through a 0.45 um PTFE syringe filter.
+      - Polar polymers insoluble in THF (e.g. polyamides, PAN): DMF + 0.05 M LiBr,
+        1.5 mg/mL, filtered through 0.45 um nylon.
+      - Volume: 1.5 mL in a 2 mL amber vial, cap labeled with the sample ID.
+      - Calibration: narrow polystyrene standards; results reported as
+        PS-equivalent Mn, Mw, and dispersity.
+      - Estimated Mn above 50 kDa: must be flagged "HMW" on the form; runs on the
+        high-MW column set (PLgel Mixed-A).
+      - Turnaround: 3 business days standard; 5 business days for HMW samples.
+
+      ## NMR (400 MHz)
+      - 10-15 mg dissolved in 0.6 mL CDCl3 (or DMSO-d6 if insoluble in CDCl3).
+      - Standard 5 mm tube, filled to 4 cm.
+      - Turnaround: 1H 1 business day; 13C 2 business days.
+
+      ## DSC
+      - 5-10 mg sealed in a Tzero aluminum pan (hermetic lid for volatile samples).
+      - Default program: heat-cool-heat, -50 to 200 C, 10 C/min, N2 purge.
+        Any other range must be written in the "Special instructions" field.
+      - Turnaround: 4 business days.
+
+      ## Submission form template
+      ```
+      CHARACTERIZATION CORE SUBMISSION
+      Sample ID:
+      Submitter / Group:
+      Analysis:            [ ] GPC  [ ] NMR  [ ] DSC
+      Polymer:
+      Est. Mn (kDa):
+      HMW flag (GPC):      [ ] Yes  [ ] No
+      Solvent / Eluent:
+      Concentration:
+      Drop-off date:
+      Expected results:
+      Special instructions:
+      ```
+      """)
+
+    return skill_ref_md_content
 
 
 # Write the skill to a scratch directory so it's discoverable through a
@@ -108,8 +197,15 @@ print(f"Skill files written to: {_skill_dir}")
 # closely enough that the agent activates it.
 # ════════════════════════════════════════════════════════════════════════
 
-SYSTEM_PROMPT = """TODO 3: replace this with your own system prompt."""
-USER_QUESTION = "TODO 3: replace this with a question that should trigger your skill."
+SYSTEM_PROMPT = """You are a lab assistant for a polymer chemistry research group.
+You have access to skills and a read_file tool. When a request matches a 
+skill, follow that skill's instructions, and read any supporting files it
+points to instead of relying on general knowledge. Be concise and practical."""
+USER_QUESTION = """I made a polystyrene-b-PMMA block copolymer, estimated Mn around
+80 kDa. I want GPC on it and plan to drop it off this Friday morning
+(Oct 30, 2026). My initials are TE and I work in the group 'Accelerated Discovery' 
+and it's my only sample that day. How should I prepare it, and when will I get 
+results?"""
 
 agent = create_deep_agent(
     model=model,
@@ -128,7 +224,9 @@ read_calls = [
     for call in getattr(msg, "tool_calls", [])
     if call["name"] == "read_file"
 ]
-reference_was_read = any(call["args"].get("file_path") == REFERENCE_PATH for call in read_calls)
+reference_was_read = any(
+    call["args"].get("file_path") == REFERENCE_PATH for call in read_calls
+)
 print(f"\n--- Did the agent read {REFERENCE_PATH}? {reference_was_read} ---")
 if not reference_was_read:
     print(

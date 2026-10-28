@@ -7,13 +7,13 @@ conversation ONCE, past the 85% threshold. But summarization doesn't just
 fire once and stop: on a long enough conversation it fires again, and again
 each time it re-summarizes the previous summary plus whatever's new since,
 while the FULL evicted history keeps piling up in a single backend file at
-/conversation_history/{thread_id}.md. 
+/conversation_history/{thread_id}.md.
 
-This homework asks you to build a conversation on a topic you pick that's 
-long enough to trigger summarization AT LEAST TWICE, then confirm two things: 
-the model can still recall a detail from your very first turn (after being 
-compacted multiple times), and the conversation history file on the backend 
-actually accumulated multiple "Summarized at ..." sections 
+This homework asks you to build a conversation on a topic you pick that's
+long enough to trigger summarization AT LEAST TWICE, then confirm two things:
+the model can still recall a detail from your very first turn (after being
+compacted multiple times), and the conversation history file on the backend
+actually accumulated multiple "Summarized at ..." sections
 instead of losing earlier ones.
 
 WHAT YOU FILL IN
@@ -36,9 +36,7 @@ import asyncio
 from deepagents import create_deep_agent
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
-
 from models import model
-
 
 # ════════════════════════════════════════════════════════════════════════
 # TODO 1: Write your own multi-turn scenario.
@@ -61,9 +59,20 @@ from models import model
 #   ]
 # ════════════════════════════════════════════════════════════════════════
 
+
 def build_turns() -> list[str]:
     """TODO 1: return your own list of user turns (at least 8)."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+    return [
+        "I am 39 years old and am wondering how drug discovery is accelerated today?",
+        "What role do agents play in this?",
+        "How do I get up to speed with Agents and Frontier models?",
+        "Which AI skills are most sought after?",
+        "How do I build them the fastest?",
+        "What personal projects should I build to demonstrate my skills if my employer prevents me from working on such projects?",
+        "What timeline should I expect for upskilling to a high market value?",
+        "Which companies would be best for my background, interests, and skillset?",
+        "Remind me: How old am I?",
+    ]
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -80,7 +89,7 @@ def build_turns() -> list[str]:
 # gets compacted away before the next one lands, and the final recall fails.
 # ════════════════════════════════════════════════════════════════════════
 
-MAX_INPUT_TOKENS = None  # TODO 2: replace None with your chosen integer threshold
+MAX_INPUT_TOKENS = 4000  # TODO 2: replace None with your chosen integer threshold
 
 model.profile = {**model.profile, "max_input_tokens": MAX_INPUT_TOKENS}
 
@@ -90,7 +99,7 @@ agent = create_deep_agent(
     system_prompt="You are a helpful assistant. Keep every response to one sentence.",
 )
 
-THREAD = {"configurable": {"thread_id": "homework"}}
+THREAD = {"configurable": {"thread_id": "homework_01"}}
 HISTORY_PATH = f"/conversation_history/{THREAD['configurable']['thread_id']}.md"
 
 
@@ -141,7 +150,9 @@ async def main() -> None:
     state = await agent.aget_state(THREAD)
     history_file = state.values.get("files", {}).get(HISTORY_PATH)
     if history_file:
-        content = history_file["content"] if isinstance(history_file, dict) else history_file
+        content = (
+            history_file["content"] if isinstance(history_file, dict) else history_file
+        )
         sections = content.count("## Summarized at")
         print(f"\n--- {HISTORY_PATH} ({sections} section(s)) ---")
         print(content)
