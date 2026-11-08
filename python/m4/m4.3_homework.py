@@ -38,11 +38,11 @@ NOTE
 """
 
 from pathlib import Path
+from textwrap import dedent
 
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain_quickjs import CodeInterpreterMiddleware
-
 from models import model, strong_model
 
 DATA_DIR = Path(__file__).resolve().parent / "homework_data"
@@ -73,9 +73,24 @@ CORPUS_PATH = DATA_DIR / "my_corpus.txt"
 #   """
 # ════════════════════════════════════════════════════════════════════════
 
+
 def build_corpus() -> str:
-    """TODO 1: return your own corpus string with at least 5 sections."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+    return dedent("""\
+      === TASK 1 ===
+      Bring out the trash.
+
+      === TASK 2 ===
+      Do Laundry.
+
+      === TASK 3 ===
+      Meal prep [easter egg: add extra chicken].
+
+      === TASK 4 ===
+      Study Agentic AI.
+
+      === TASK 5 ===
+      Read 10 pages in current book [easter egg: make yourself a tea].\
+      """)
 
 
 CORPUS_PATH.write_text(build_corpus())
@@ -93,9 +108,24 @@ CORPUS_PATH.write_text(build_corpus())
 #     triggers code-based dispatch, see the lesson).
 # ════════════════════════════════════════════════════════════════════════
 
+
 def build_prompts() -> tuple[str, str]:
-    """TODO 2: return (scanner_prompt, main_prompt)."""
-    raise NotImplementedError("TODO 2: see the comment block above")
+    scanner_prompt = dedent("""\
+      You are analizing tasks descriptions for easter eggs information and extract those.
+      If you cannot find any easter egg, don't create one.
+
+      Only return a JSON array of the easter egg information quoted verbatim without any alterations. If you cannot find an easter egg, return '[]'.\
+      """)
+    main_prompt = dedent("""\
+      You are coordinating the check of my tasks in the file my_corpus.txt for additional easter egg information.
+      Each tasks has the header '=== TASK N ===' where n is an integer.
+      
+      Create a workflow using the code interpreter and let it handle starting with splitting the bulk text in my_corpus.txt by the task sections and then run scanner agents on each task simultaneously. Never read a tasks's full text into your own context; let the interpreter hold the
+      file, and let each subagent hold only its own task.
+
+      Collect every subagent's findings into one final report, grouped by TASK N and the found easter egg information. Omit tasks where no easter egg was found.\
+      """)
+    return (scanner_prompt, main_prompt)
 
 
 SCANNER_PROMPT, MAIN_PROMPT = build_prompts()
@@ -111,6 +141,7 @@ section_scanner = {
 }
 
 agent = create_deep_agent(
+    name="m4.3-homework-agent",
     model=strong_model,
     middleware=[CodeInterpreterMiddleware()],
     system_prompt=MAIN_PROMPT,

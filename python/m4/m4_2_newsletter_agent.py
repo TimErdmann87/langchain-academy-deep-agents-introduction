@@ -17,10 +17,10 @@ import os
 import markdown as md
 import nh3
 from deepagents import FilesystemPermission, create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
 from langchain_core.tools import tool
-from tavily import TavilyClient
-
 from models import model, strong_model
+from tavily import TavilyClient
 
 # The distributor's top genres — known up front, no database needed.
 TOP_GENRES = ["Rock", "Latin", "Metal", "Alternative & Punk"]
@@ -107,7 +107,9 @@ Return ONLY the finished segment as your reply:
 
 # Researchers may write under /research/** and are denied writes elsewhere.
 research_permissions = [
-    FilesystemPermission(operations=["read", "write"], paths=["/research/**"], mode="allow"),
+    FilesystemPermission(
+        operations=["read", "write"], paths=["/research/**"], mode="allow"
+    ),
     FilesystemPermission(operations=["write"], paths=["/**"], mode="deny"),
 ]
 
@@ -117,10 +119,10 @@ genre_researcher = {
         "Research one music genre and write a short newsletter segment about "
         "what's new in it. Delegate one genre per call."
     ),
-    "system_prompt": GENRE_PROMPT,         # its own brain — never inherited
-    "tools": [internet_search],            # override — replaces the inherited set
-    "model": model,                        # override — the cheaper Haiku 4.5
-    "permissions": research_permissions,   # override — scoped write access
+    "system_prompt": GENRE_PROMPT,  # its own brain — never inherited
+    "tools": [internet_search],  # override — replaces the inherited set
+    "model": model,  # override — the cheaper Haiku 4.5
+    "permissions": research_permissions,  # override — scoped write access
 }
 
 
@@ -153,6 +155,7 @@ agent = create_deep_agent(
     model=strong_model,
     tools=[markdown_to_html],
     system_prompt=EDITOR_PROMPT,
+    middleware=[TodoListMiddleware()],
     subagents=[genre_researcher],
     permissions=editor_permissions,
 )
