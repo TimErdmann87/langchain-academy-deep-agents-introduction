@@ -29,7 +29,7 @@ below** so the correct names load next time.
 
 ## Database schema
 
-Complete schema:
+Complete schema (verified from introspect_schema):
 - **Album**: AlbumId, Title, ArtistId
 - **Artist**: ArtistId, Name
 - **Customer**: CustomerId, FirstName, LastName, Company, Address, City, State, Country, PostalCode, Phone, Fax, Email, SupportRepId
@@ -51,4 +51,6 @@ Current sales rep: Jane Peacock (EmployeeId 3)
 
 ## Recent Lookups
 
-_(none yet)_
+- Rock genre: 1,297 tracks, all priced at $0.99
+- Metal genre: 374 tracks, all priced at $0.99
+- Top 10 best-selling tracks: all tied at 2 units sold (determined by TrackId ASC)

@@ -25,21 +25,43 @@ Then chat with your agent in the Studio window that opens, or see
 call_agent_api.py to talk to it over the API instead.
 """
 
-from langchain_core.tools import tool
+import json
+from typing import Annotated, Literal
 
 from deepagents import create_deep_agent
+from langchain_core.tools import tool
+from langchain_core.utils.function_calling import convert_to_openai_tool
 from models import model
-
+from tavily.tavily import TavilyClient
 
 # TODO 1: replace this with your own @tool-decorated function.
-@tool
-def lookup_fact(topic: str) -> str:
-    """TODO 1: replace this with your own tool on a topic of your choosing."""
-    raise NotImplementedError("TODO 1: see the comment block above")
+tavily_client = TavilyClient()
 
+
+@tool
+def lookup_fact(
+    query: Annotated[str, "topic or brief phrase for web search"],
+    max_results: Annotated[int, "maximum number of search results"] = 5,
+) -> str:
+    """Use this tool to run web search fact lookups"""
+    res = tavily_client.search(query, max_results=max_results, include_answer="basic")
+    return str(res.get("answer", "error"))
+
+
+tools = [lookup_fact]
+t = tools[0]
+
+print("\n# # # TOOL 1 # # #")
+print(t.name)
+print(t.description)
+print(t.args_schema.model_json_schema())
+print()
+print(t.args)  # just the parameter properties
+print(json.dumps(convert_to_openai_tool(t), indent=2))  # exactly what the model sees
+print()
 
 # TODO 2: replace this with your own persona system prompt.
-SYSTEM_PROMPT = """TODO 2: replace this with your own system prompt."""
+SYSTEM_PROMPT = """Your are a helpful assistant to run web searches to check facts. Talk politlely with the tone of a gentlemen living in America during the roaring twenties."""
 
 # `langgraph.json` points at this module-level variable: "./agent.py:graph".
 graph = create_deep_agent(model=model, tools=[lookup_fact], system_prompt=SYSTEM_PROMPT)

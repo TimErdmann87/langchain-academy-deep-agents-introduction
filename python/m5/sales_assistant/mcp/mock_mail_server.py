@@ -15,6 +15,9 @@ from __future__ import annotations
 
 from mail_store import load_store, next_id, save_store
 from mcp.server.fastmcp import FastMCP
+from mcp.types import Tool
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 mcp = FastMCP("mock-mail", host="127.0.0.1", port=5002)
 
@@ -75,7 +78,23 @@ def mail_create_draft(to: str, subject: str, body: str) -> dict:
     }
     store["drafts"].append(draft)
     save_store(store)
-    return {"status": "draft_saved", "draft_id": draft["id"], "to": to, "subject": subject}
+    return {
+        "status": "draft_saved",
+        "draft_id": draft["id"],
+        "to": to,
+        "subject": subject,
+    }
+
+
+@mcp.custom_route(path="/docs", methods=["GET"])
+async def docs(request: Request) -> JSONResponse:
+    tools: list[Tool] = await mcp.list_tools()
+    return JSONResponse(
+        content=[
+            {"name": t.name, "description": t.description, "inputSchema": t.inputSchema}
+            for t in tools
+        ]
+    )
 
 
 if __name__ == "__main__":
