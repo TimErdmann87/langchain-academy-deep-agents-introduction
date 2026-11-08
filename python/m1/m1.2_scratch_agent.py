@@ -6,7 +6,7 @@ from models import model
 t0: float = perf_counter()
 print("Running m1.2 with", model.model, "...")
 
-agent = create_deep_agent(model=model)
+agent = create_deep_agent(model=model, name="m1.2-deepagent-plain")
 
 result = agent.invoke({"messages": [{"role": "user", "content": "What is an LLM?"}]})
 
